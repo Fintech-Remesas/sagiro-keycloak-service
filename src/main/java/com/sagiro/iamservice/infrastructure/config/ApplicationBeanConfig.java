@@ -1,0 +1,100 @@
+package com.sagiro.iamservice.infrastructure.config;
+
+import com.sagiro.iamservice.application.port.input.DeactivateUserFromEventUseCase;
+import com.sagiro.iamservice.application.port.input.GetAccessContextUseCase;
+import com.sagiro.iamservice.application.port.input.GetCurrentUserUseCase;
+import com.sagiro.iamservice.application.port.input.GetUserStatusUseCase;
+import com.sagiro.iamservice.application.port.input.ProvisionUserFromEventUseCase;
+import com.sagiro.iamservice.application.port.input.RegisterUserUseCase;
+import com.sagiro.iamservice.application.port.input.UpdateUserProfileUseCase;
+import com.sagiro.iamservice.application.port.input.UpdateVerificationStatusUseCase;
+import com.sagiro.iamservice.application.port.output.CurrentUserProviderPort;
+import com.sagiro.iamservice.application.port.output.KeycloakAdminPort;
+import com.sagiro.iamservice.application.port.output.UserProfileRepositoryPort;
+import com.sagiro.iamservice.application.port.output.UserRepositoryPort;
+import com.sagiro.iamservice.application.service.DeactivateUserFromEventService;
+import com.sagiro.iamservice.application.service.GetAccessContextService;
+import com.sagiro.iamservice.application.service.GetCurrentUserService;
+import com.sagiro.iamservice.application.service.GetUserStatusService;
+import com.sagiro.iamservice.application.service.ProvisionUserFromEventService;
+import com.sagiro.iamservice.application.service.RegisterUserService;
+import com.sagiro.iamservice.application.service.UpdateCurrentUserProfileService;
+import com.sagiro.iamservice.application.service.UpdateVerificationStatusService;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+import java.time.Clock;
+
+@Configuration
+public class ApplicationBeanConfig {
+
+    @Bean
+    Clock clock() {
+        return Clock.systemUTC();
+    }
+
+    @Bean
+    RegisterUserUseCase registerUserUseCase(
+            UserRepositoryPort userRepositoryPort,
+            UserProfileRepositoryPort userProfileRepositoryPort,
+            KeycloakAdminPort keycloakAdminPort,
+            Clock clock
+    ) {
+        return new RegisterUserService(userRepositoryPort, userProfileRepositoryPort, keycloakAdminPort, clock);
+    }
+
+    @Bean
+    GetCurrentUserUseCase getCurrentUserUseCase(
+            CurrentUserProviderPort currentUserProviderPort,
+            UserRepositoryPort userRepositoryPort,
+            UserProfileRepositoryPort userProfileRepositoryPort
+    ) {
+        return new GetCurrentUserService(currentUserProviderPort, userRepositoryPort, userProfileRepositoryPort);
+    }
+
+    @Bean
+    UpdateUserProfileUseCase updateUserProfileUseCase(
+            CurrentUserProviderPort currentUserProviderPort,
+            UserRepositoryPort userRepositoryPort,
+            UserProfileRepositoryPort userProfileRepositoryPort,
+            Clock clock
+    ) {
+        return new UpdateCurrentUserProfileService(currentUserProviderPort, userRepositoryPort, userProfileRepositoryPort, clock);
+    }
+
+    @Bean
+    GetAccessContextUseCase getAccessContextUseCase(
+            CurrentUserProviderPort currentUserProviderPort,
+            UserRepositoryPort userRepositoryPort
+    ) {
+        return new GetAccessContextService(currentUserProviderPort, userRepositoryPort);
+    }
+
+    @Bean
+    GetUserStatusUseCase getUserStatusUseCase(UserRepositoryPort userRepositoryPort) {
+        return new GetUserStatusService(userRepositoryPort);
+    }
+
+    @Bean
+    UpdateVerificationStatusUseCase updateVerificationStatusUseCase(UserRepositoryPort userRepositoryPort, Clock clock) {
+        return new UpdateVerificationStatusService(userRepositoryPort, clock);
+    }
+
+    @Bean
+    ProvisionUserFromEventUseCase provisionUserFromEventUseCase(
+            UserRepositoryPort userRepositoryPort,
+            UserProfileRepositoryPort userProfileRepositoryPort,
+            Clock clock
+    ) {
+        return new ProvisionUserFromEventService(userRepositoryPort, userProfileRepositoryPort, clock);
+    }
+
+    @Bean
+    DeactivateUserFromEventUseCase deactivateUserFromEventUseCase(
+            UserRepositoryPort userRepositoryPort,
+            KeycloakAdminPort keycloakAdminPort,
+            Clock clock
+    ) {
+        return new DeactivateUserFromEventService(userRepositoryPort, keycloakAdminPort, clock);
+    }
+}
