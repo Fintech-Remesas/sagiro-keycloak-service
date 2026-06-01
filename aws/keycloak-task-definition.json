@@ -1,0 +1,77 @@
+{
+  "family": "keycloak-service",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "1024",
+  "memory": "2048",
+  "executionRoleArn": "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/ECSExecutionRole",
+  "taskRoleArn": "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/ECSTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "keycloak",
+      "image": "quay.io/keycloak/keycloak:25.0.6",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "command": [
+        "start",
+        "--optimized"
+      ],
+      "environment": [
+        {
+          "name": "KC_DB",
+          "value": "postgres"
+        },
+        {
+          "name": "KC_DB_URL",
+          "value": "jdbc:postgresql://YOUR_RDS_POSTGRES_ENDPOINT:5432/iam_db"
+        },
+        {
+          "name": "KC_HTTP_ENABLED",
+          "value": "true"
+        },
+        {
+          "name": "KC_PROXY_HEADERS",
+          "value": "xforwarded"
+        },
+        {
+          "name": "KC_HOSTNAME",
+          "value": "keycloak.internal.local"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "KEYCLOAK_ADMIN",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_AWS_REGION:YOUR_AWS_ACCOUNT_ID:secret:keycloak-prod-secrets:admin_user::"
+        },
+        {
+          "name": "KEYCLOAK_ADMIN_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_AWS_REGION:YOUR_AWS_ACCOUNT_ID:secret:keycloak-prod-secrets:admin_password::"
+        },
+        {
+          "name": "KC_DB_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_AWS_REGION:YOUR_AWS_ACCOUNT_ID:secret:keycloak-prod-secrets:db_user::"
+        },
+        {
+          "name": "KC_DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_AWS_REGION:YOUR_AWS_ACCOUNT_ID:secret:keycloak-prod-secrets:db_password::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/keycloak-service",
+          "awslogs-region": "YOUR_AWS_REGION",
+          "awslogs-stream-prefix": "keycloak"
+        }
+      }
+    }
+  ]
+}

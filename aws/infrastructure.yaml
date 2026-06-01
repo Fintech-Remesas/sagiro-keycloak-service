@@ -1,0 +1,335 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: AWS Infrastructure for deploying Keycloak and Spring Boot IAM Service on ECS Fargate with an internal ALB.
+
+Parameters:
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID where services will be deployed.
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+    Description: VPC CIDR block to allow internal traffic.
+  SubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: List of Private Subnets for ECS Tasks.
+  AlbSubnetIds:
+    Type: List<AWS::EC2::Subnet::Id>
+    Description: List of Subnets (Private/Public) for the Internal Load Balancer.
+  KeycloakImage:
+    Type: String
+    Default: quay.io/keycloak/keycloak:25.0.6
+    Description: Docker image for Keycloak.
+  IamServiceImage:
+    Type: String
+    Default: YOUR_ECR_REGISTRY_URL/iam-service:latest
+    Description: Docker image for iam-service.
+  RdsEndpoint:
+    Type: String
+    Description: Endpoint of the RDS PostgreSQL database (e.g. database-1.xxxx.us-east-1.rds.amazonaws.com).
+  KafkaBrokers:
+    Type: String
+    Default: localhost:9092
+    Description: Connection string for Kafka brokers.
+  SecretsArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret containing DB credentials, admin password, and keycloak client secrets.
+
+Resources:
+  # ECS Cluster
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: sagiro-ecs-cluster
+
+  # IAM Roles for ECS Tasks
+  ECSExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: sagiro-ecs-execution-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+      Policies:
+        - PolicyName: SecretsManagerReadAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref SecretsArn
+
+  ECSTaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: sagiro-ecs-task-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: ECSCloudWatchLogsAccess
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  # CloudWatch Log Groups
+  KeycloakLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/keycloak-service
+      RetentionInDays: 7
+
+  IamServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: /ecs/iam-service
+      RetentionInDays: 7
+
+  # Security Groups
+  ALBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for internal ALB exposing Keycloak
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: !Ref VpcCidr
+
+  KeycloakSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Keycloak ECS Tasks
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          SourceSecurityGroupId: !Ref ALBSecurityGroup
+
+  IamServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for iam-service ECS Tasks
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 8080
+          ToPort: 8080
+          CidrIp: !Ref VpcCidr
+
+  # Application Load Balancer (Internal)
+  InternalLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: sagiro-internal-alb
+      Scheme: internal
+      Type: application
+      Subnets: !Ref AlbSubnetIds
+      SecurityGroups:
+        - !Ref ALBSecurityGroup
+
+  # Route 53 Private Hosted Zone
+  PrivateHostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: internal.local
+      VPCs:
+        - VPCId: !Ref VpcId
+          VPCRegion: !Ref AWS::Region
+
+  # Route 53 CNAME for Keycloak
+  KeycloakDnsRecord:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref PrivateHostedZone
+      Name: keycloak.internal.local
+      Type: A
+      AliasTarget:
+        DNSName: !GetAtt InternalLoadBalancer.DNSName
+        HostedZoneId: !GetAtt InternalLoadBalancer.CanonicalHostedZoneID
+
+  # Target Groups
+  KeycloakTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: tg-keycloak
+      Port: 8080
+      Protocol: HTTP
+      VpcId: !Ref VpcId
+      TargetType: ip
+      HealthCheckPath: /realms/master
+      HealthCheckIntervalSeconds: 15
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 3
+
+  # ALB Listener
+  ALBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref InternalLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref KeycloakTargetGroup
+
+  # Task Definitions
+  KeycloakTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: keycloak-service
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: '1024'
+      Memory: '2048'
+      ExecutionRoleArn: !Ref ECSExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: keycloak
+          Image: !Ref KeycloakImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+              HostPort: 8080
+              Protocol: tcp
+          Command:
+            - start
+            - --optimized
+          Environment:
+            - Name: KC_DB
+              Value: postgres
+            - Name: KC_DB_URL
+              Value: !Sub jdbc:postgresql://${RdsEndpoint}:5432/iam_db
+            - Name: KC_HTTP_ENABLED
+              Value: 'true'
+            - Name: KC_PROXY_HEADERS
+              Value: xforwarded
+            - Name: KC_HOSTNAME
+              Value: keycloak.internal.local
+          Secrets:
+            - Name: KEYCLOAK_ADMIN
+              ValueFrom: !Sub ${SecretsArn}:admin_user::
+            - Name: KEYCLOAK_ADMIN_PASSWORD
+              ValueFrom: !Sub ${SecretsArn}:admin_password::
+            - Name: KC_DB_USERNAME
+              ValueFrom: !Sub ${SecretsArn}:db_user::
+            - Name: KC_DB_PASSWORD
+              ValueFrom: !Sub ${SecretsArn}:db_password::
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref KeycloakLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: keycloak
+
+  IamServiceTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: iam-service
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+        - FARGATE
+      Cpu: '512'
+      Memory: '1024'
+      ExecutionRoleArn: !Ref ECSExecutionRole
+      TaskRoleArn: !Ref ECSTaskRole
+      ContainerDefinitions:
+        - Name: iam-service
+          Image: !Ref IamServiceImage
+          Essential: true
+          PortMappings:
+            - ContainerPort: 8080
+              HostPort: 8080
+              Protocol: tcp
+          Environment:
+            - Name: SERVER_PORT
+              Value: '8080'
+            - Name: DB_URL
+              Value: !Sub jdbc:postgresql://${RdsEndpoint}:5432/iam_db
+            - Name: KEYCLOAK_BASE_URL
+              Value: http://keycloak.internal.local
+            - Name: KEYCLOAK_ISSUER_URI
+              Value: http://keycloak.internal.local/realms/remittance-thesis
+            - Name: KEYCLOAK_REALM
+              Value: remittance-thesis
+            - Name: KEYCLOAK_ADMIN_CLIENT_ID
+              Value: iam-admin-client
+            - Name: KEYCLOAK_BACKEND_CLIENT_ID
+              Value: iam-backend
+            - Name: KAFKA_BOOTSTRAP_SERVERS
+              Value: !Ref KafkaBrokers
+          Secrets:
+            - Name: DB_USERNAME
+              ValueFrom: !Sub ${SecretsArn}:db_user::
+            - Name: DB_PASSWORD
+              ValueFrom: !Sub ${SecretsArn}:db_password::
+            - Name: KEYCLOAK_ADMIN_CLIENT_SECRET
+              ValueFrom: !Sub ${SecretsArn}:keycloak_admin_client_secret::
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref IamServiceLogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: iam-service
+
+  # ECS Services
+  KeycloakService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: keycloak-service
+      TaskDefinition: !Ref KeycloakTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+          SecurityGroups:
+            - !Ref KeycloakSecurityGroup
+      LoadBalancers:
+        - ContainerName: keycloak
+          ContainerPort: 8080
+          TargetGroupArn: !Ref KeycloakTargetGroup
+
+  IamService:
+    Type: AWS::ECS::Service
+    Properties:
+      Cluster: !Ref ECSCluster
+      ServiceName: iam-service
+      TaskDefinition: !Ref IamServiceTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          Subnets: !Ref SubnetIds
+          SecurityGroups:
+            - !Ref IamServiceSecurityGroup
+
+Outputs:
+  InternalAlbDns:
+    Description: Internal ALB DNS name resolving Keycloak
+    Value: !GetAtt InternalLoadBalancer.DNSName
+  KeycloakInternalUrl:
+    Description: Keycloak Internal DNS URL
+    Value: http://keycloak.internal.local

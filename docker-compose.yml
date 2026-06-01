@@ -1,72 +1,86 @@
-services:
-  postgres:
-    image: postgres:16
-    container_name: iam-postgres
-    environment:
-      POSTGRES_DB: iam_db
-      POSTGRES_USER: iam_user
-      POSTGRES_PASSWORD: iam_password
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+  services:
+    postgres:
+      image: postgres:16
+      container_name: iam-postgres
+      environment:
+        POSTGRES_DB: iam_db
+        POSTGRES_USER: iam_user
+        POSTGRES_PASSWORD: iam_password
+      ports:
+        - "5432:5432"
+      volumes:
+        - postgres_data:/var/lib/postgresql/data
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U iam_user -d iam_db"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
 
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.1
-    container_name: iam-zookeeper
-    environment:
-      ZOOKEEPER_CLIENT_PORT: 2181
-      ZOOKEEPER_TICK_TIME: 2000
-    ports:
-      - "2181:2181"
+    zookeeper:
+      image: confluentinc/cp-zookeeper:7.6.1
+      container_name: iam-zookeeper
+      environment:
+        ZOOKEEPER_CLIENT_PORT: 2181
+        ZOOKEEPER_TICK_TIME: 2000
+      ports:
+        - "2181:2181"
 
-  kafka:
-    image: confluentinc/cp-kafka:7.6.1
-    container_name: iam-kafka
-    depends_on:
-      - zookeeper
-    ports:
-      - "9092:9092"
-    environment:
-      KAFKA_BROKER_ID: 1
-      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
-      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+    kafka:
+      image: confluentinc/cp-kafka:7.6.1
+      container_name: iam-kafka
+      depends_on:
+        - zookeeper
+      ports:
+        - "9092:9092"
+      environment:
+        KAFKA_BROKER_ID: 1
+        KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+        KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
+        KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
+        KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+        KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      healthcheck:
+        test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
 
-  keycloak:
-    image: quay.io/keycloak/keycloak:25.0.6
-    container_name: iam-keycloak
-    command: ["start-dev", "--http-port=8080"]
-    environment:
-      KEYCLOAK_ADMIN: admin
-      KEYCLOAK_ADMIN_PASSWORD: admin
-    ports:
-      - "8081:8080"
+    keycloak:
+      image: quay.io/keycloak/keycloak:25.0.6
+      container_name: iam-keycloak
+      command: ["start-dev", "--http-port=8080"]
+      environment:
+        KEYCLOAK_ADMIN: admin
+        KEYCLOAK_ADMIN_PASSWORD: admin
+      ports:
+        - "8081:8080"
 
-  iam-service:
-    build:
-      context: .
-    container_name: iam-service
-    depends_on:
-      - postgres
-      - kafka
-      - keycloak
-    environment:
-      SERVER_PORT: 8080
-      DB_URL: jdbc:postgresql://postgres:5432/iam_db
-      DB_USERNAME: iam_user
-      DB_PASSWORD: iam_password
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
-      KEYCLOAK_BASE_URL: http://keycloak:8080
-      KEYCLOAK_REALM: remittance-thesis
-      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/remittance-thesis
-      KEYCLOAK_ADMIN_CLIENT_ID: iam-admin-client
-      KEYCLOAK_ADMIN_CLIENT_SECRET: change-me
-      KEYCLOAK_BACKEND_CLIENT_ID: iam-backend
-    ports:
-      - "8080:8080"
+    iam-service:
+      build:
+        context: .
+      container_name: iam-service
+      depends_on:
+        postgres:
+          condition: service_healthy
+        kafka:
+          condition: service_healthy
+        keycloak:
+          condition: service_started
+      environment:
+        SERVER_PORT: 8080
+        DB_URL: jdbc:postgresql://postgres:5432/iam_db
+        DB_USERNAME: iam_user
+        DB_PASSWORD: iam_password
+        KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+        KEYCLOAK_BASE_URL: http://keycloak:8080
+        KEYCLOAK_REALM: remittance-thesis
+        KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/remittance-thesis
+        KEYCLOAK_ADMIN_CLIENT_ID: iam-admin-client
+        KEYCLOAK_ADMIN_CLIENT_SECRET: change-me
+        KEYCLOAK_BACKEND_CLIENT_ID: iam-backend
+      ports:
+        - "8080:8080"
 
-volumes:
-  postgres_data:
+  volumes:
+    postgres_data:
+
