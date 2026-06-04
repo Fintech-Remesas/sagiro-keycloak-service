@@ -30,7 +30,7 @@ public class SecurityConfig {
                                 "/actuator/health/**",
                                 "/api/v1/test/ping"
                         ).permitAll()
-                        .requestMatchers(HttpMethod.POST, "/api/v1/users/register").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users/register", "/api/v1/auth/login").permitAll()
                         .requestMatchers("/api/v1/internal/**").hasAnyRole("ADMIN", "SERVICE")
                         .requestMatchers(HttpMethod.GET, "/api/v1/users/*/status").hasAnyRole("ADMIN", "SERVICE")
                         .requestMatchers("/api/v1/users/me/**").hasAnyRole("CUSTOMER", "ADMIN", "SERVICE")
