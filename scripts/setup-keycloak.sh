@@ -75,6 +75,16 @@ if [ "$realm_status" = "404" ]; then
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "fullScopeAllowed": true
+    },
+    {
+      "clientId": "remittance-frontend",
+      "name": "remittance-frontend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "fullScopeAllowed": true
     }
   ]
 }

@@ -27,7 +27,7 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
     public String createUser(KeycloakUserDraft userDraft) {
         List<KeycloakCredentialRepresentation> credentials = userDraft.temporaryPassword() == null || userDraft.temporaryPassword().isBlank()
                 ? List.of()
-                : List.of(new KeycloakCredentialRepresentation("password", userDraft.temporaryPassword(), true));
+                : List.of(new KeycloakCredentialRepresentation("password", userDraft.temporaryPassword(), false));
         List<String> requiredActions = credentials.isEmpty() ? List.of("UPDATE_PASSWORD") : List.of();
 
         return keycloakAdminClient.createUser(new KeycloakCreateUserRequest(
