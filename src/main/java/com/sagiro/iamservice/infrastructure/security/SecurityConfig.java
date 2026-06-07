@@ -32,6 +32,7 @@ public class SecurityConfig {
                         ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/register").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/login").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/auth/login").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/password-recovery/request").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/password-recovery/reset").permitAll()
                         .requestMatchers("/api/v1/internal/**").hasAnyRole("ADMIN", "SERVICE")

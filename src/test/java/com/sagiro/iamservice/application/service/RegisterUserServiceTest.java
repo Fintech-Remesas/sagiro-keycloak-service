@@ -60,7 +60,7 @@ class RegisterUserServiceTest {
         assertThat(result.keycloakUserId()).isEqualTo("kc-user-123");
         assertThat(result.accountStatus().name()).isEqualTo("REGISTERED");
         assertThat(result.verificationStatus().name()).isEqualTo("NOT_STARTED");
-        assertThat(result.canOperate()).isFalse();
+        assertThat(result.canOperate()).isTrue();
         assertThat(result.profile().country()).isEqualTo("PE");
         assertThat(result.profile().preferredLanguage()).isEqualTo("es");
     }

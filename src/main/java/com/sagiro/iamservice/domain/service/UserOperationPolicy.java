@@ -10,7 +10,7 @@ public final class UserOperationPolicy {
 
     public static boolean canOperate(AccountStatus accountStatus, VerificationStatus verificationStatus, boolean enabled) {
         return enabled
-                && accountStatus == AccountStatus.ACTIVE
-                && verificationStatus == VerificationStatus.VERIFIED;
+                && (accountStatus == AccountStatus.ACTIVE || accountStatus == AccountStatus.REGISTERED)
+                && verificationStatus != VerificationStatus.REJECTED;
     }
 }

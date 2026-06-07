@@ -90,6 +90,16 @@ if [ "$realm_status" = "404" ]; then
       "fullScopeAllowed": true,
       "redirectUris": ["*"],
       "webOrigins": ["*"]
+    },
+    {
+      "clientId": "remittance-frontend",
+      "name": "remittance-frontend",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "fullScopeAllowed": true
     }
   ]
 }

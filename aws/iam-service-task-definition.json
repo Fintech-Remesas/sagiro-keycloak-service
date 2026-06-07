@@ -1,0 +1,81 @@
+{
+  "family": "iam-service",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/ECSExecutionRole",
+  "taskRoleArn": "arn:aws:iam::YOUR_AWS_ACCOUNT_ID:role/ECSTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "iam-service",
+      "image": "YOUR_ECR_REGISTRY_URL/iam-service:latest",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "SERVER_PORT",
+          "value": "8080"
+        },
+        {
+          "name": "DB_URL",
+          "value": "jdbc:postgresql://YOUR_RDS_POSTGRES_ENDPOINT:5432/iam_db"
+        },
+        {
+          "name": "KEYCLOAK_BASE_URL",
+          "value": "http://keycloak.internal.local"
+        },
+        {
+          "name": "KEYCLOAK_ISSUER_URI",
+          "value": "http://keycloak.internal.local/realms/remittance-thesis"
+        },
+        {
+          "name": "KEYCLOAK_REALM",
+          "value": "remittance-thesis"
+        },
+        {
+          "name": "KEYCLOAK_ADMIN_CLIENT_ID",
+          "value": "iam-admin-client"
+        },
+        {
+          "name": "KEYCLOAK_BACKEND_CLIENT_ID",
+          "value": "iam-backend"
+        },
+        {
+          "name": "KAFKA_BOOTSTRAP_SERVERS",
+          "value": "YOUR_KAFKA_BROKERS_ENDPOINT:9092"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "DB_USERNAME",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_AWS_REGION:YOUR_AWS_ACCOUNT_ID:secret:keycloak-prod-secrets:db_user::"
+        },
+        {
+          "name": "DB_PASSWORD",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_AWS_REGION:YOUR_AWS_ACCOUNT_ID:secret:keycloak-prod-secrets:db_password::"
+        },
+        {
+          "name": "KEYCLOAK_ADMIN_CLIENT_SECRET",
+          "valueFrom": "arn:aws:secretsmanager:YOUR_AWS_REGION:YOUR_AWS_ACCOUNT_ID:secret:keycloak-prod-secrets:keycloak_admin_client_secret::"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/iam-service",
+          "awslogs-region": "YOUR_AWS_REGION",
+          "awslogs-stream-prefix": "iam-service"
+        }
+      }
+    }
+  ]
+}
