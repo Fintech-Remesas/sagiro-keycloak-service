@@ -26,7 +26,9 @@ public final class UserPersistenceMapper {
                 entity.isCanOperate(),
                 entity.isEnabled(),
                 entity.getCreatedAt(),
-                entity.getUpdatedAt()
+                entity.getUpdatedAt(),
+                entity.getPasswordResetToken(),
+                entity.getPasswordResetTokenExpiresAt()
         );
     }
 
@@ -47,6 +49,8 @@ public final class UserPersistenceMapper {
         entity.setEnabled(user.isEnabled());
         entity.setCreatedAt(user.getCreatedAt());
         entity.setUpdatedAt(user.getUpdatedAt());
+        entity.setPasswordResetToken(user.getPasswordResetToken());
+        entity.setPasswordResetTokenExpiresAt(user.getPasswordResetTokenExpiresAt());
         return entity;
     }
 

@@ -7,7 +7,7 @@ services:
       POSTGRES_USER: iam_user
       POSTGRES_PASSWORD: iam_password
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -30,9 +30,10 @@ services:
     environment:
       KAFKA_BROKER_ID: 1
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT
-      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092
-      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT
+      KAFKA_LISTENERS: INTERNAL://0.0.0.0:29092,EXTERNAL://0.0.0.0:9092
+      KAFKA_ADVERTISED_LISTENERS: INTERNAL://kafka:29092,EXTERNAL://localhost:9092
+      KAFKA_INTER_BROKER_LISTENER_NAME: INTERNAL
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
 
   keycloak:
@@ -54,19 +55,20 @@ services:
       - kafka
       - keycloak
     environment:
-      SERVER_PORT: 8080
+      SERVER_PORT: 8082
       DB_URL: jdbc:postgresql://postgres:5432/iam_db
       DB_USERNAME: iam_user
       DB_PASSWORD: iam_password
-      KAFKA_BOOTSTRAP_SERVERS: kafka:9092
+      KAFKA_BOOTSTRAP_SERVERS: kafka:29092
       KEYCLOAK_BASE_URL: http://keycloak:8080
-      KEYCLOAK_REALM: remittance-thesis
-      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/remittance-thesis
+      KEYCLOAK_REALM: sagiro
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/sagiro
       KEYCLOAK_ADMIN_CLIENT_ID: iam-admin-client
       KEYCLOAK_ADMIN_CLIENT_SECRET: change-me
       KEYCLOAK_BACKEND_CLIENT_ID: iam-backend
+      KEYCLOAK_BACKEND_CLIENT_SECRET: change-me
     ports:
-      - "8080:8080"
+      - "8082:8082"
 
 volumes:
   postgres_data:

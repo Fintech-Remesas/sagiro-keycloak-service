@@ -20,4 +20,6 @@ public interface UserRepositoryPort {
     boolean existsByEmail(String email);
 
     boolean existsByUsername(String username);
+
+    Optional<User> findByPasswordResetToken(String token);
 }

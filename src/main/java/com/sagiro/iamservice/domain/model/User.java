@@ -26,6 +26,8 @@ public final class User {
     private boolean enabled;
     private Instant createdAt;
     private Instant updatedAt;
+    private String passwordResetToken;
+    private Instant passwordResetTokenExpiresAt;
 
     public User(
             UUID id,
@@ -42,7 +44,9 @@ public final class User {
             boolean canOperate,
             boolean enabled,
             Instant createdAt,
-            Instant updatedAt
+            Instant updatedAt,
+            String passwordResetToken,
+            Instant passwordResetTokenExpiresAt
     ) {
         this.id = Objects.requireNonNull(id, "id is required");
         this.keycloakUserId = keycloakUserId;
@@ -59,6 +63,8 @@ public final class User {
         this.enabled = enabled;
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt is required");
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt is required");
+        this.passwordResetToken = passwordResetToken;
+        this.passwordResetTokenExpiresAt = passwordResetTokenExpiresAt;
         refreshOperationalCapability();
     }
 
@@ -87,8 +93,31 @@ public final class User {
                 false,
                 true,
                 now,
-                now
+                now,
+                null,
+                null
         );
+    }
+
+    /**
+     * Stores a one-time password-reset token and its expiry on the user.
+     * The plain token must be sent to the user via the communication-service (Kafka).
+     * Fintech rule: tokens expire after a short configurable TTL (default 15 min).
+     */
+    public void requestPasswordReset(String token, Instant expiresAt, Instant now) {
+        this.passwordResetToken = Objects.requireNonNull(token, "token is required");
+        this.passwordResetTokenExpiresAt = Objects.requireNonNull(expiresAt, "expiresAt is required");
+        touch(now);
+    }
+
+    /**
+     * Validates and clears the password-reset token after a successful reset.
+     * Throws if the token has expired.
+     */
+    public void clearPasswordResetToken(Instant now) {
+        this.passwordResetToken = null;
+        this.passwordResetTokenExpiresAt = null;
+        touch(now);
     }
 
     public void markActive(Instant now) {
@@ -211,5 +240,13 @@ public final class User {
 
     public Instant getUpdatedAt() {
         return updatedAt;
+    }
+
+    public String getPasswordResetToken() {
+        return passwordResetToken;
+    }
+
+    public Instant getPasswordResetTokenExpiresAt() {
+        return passwordResetTokenExpiresAt;
     }
 }

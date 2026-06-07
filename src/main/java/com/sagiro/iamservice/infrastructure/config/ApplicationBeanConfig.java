@@ -4,22 +4,30 @@ import com.sagiro.iamservice.application.port.input.DeactivateUserFromEventUseCa
 import com.sagiro.iamservice.application.port.input.GetAccessContextUseCase;
 import com.sagiro.iamservice.application.port.input.GetCurrentUserUseCase;
 import com.sagiro.iamservice.application.port.input.GetUserStatusUseCase;
+import com.sagiro.iamservice.application.port.input.LoginUseCase;
+import com.sagiro.iamservice.application.port.input.PasswordRecoveryUseCase;
 import com.sagiro.iamservice.application.port.input.ProvisionUserFromEventUseCase;
 import com.sagiro.iamservice.application.port.input.RegisterUserUseCase;
+import com.sagiro.iamservice.application.port.input.SimulateKycVerificationUseCase;
 import com.sagiro.iamservice.application.port.input.UpdateUserProfileUseCase;
 import com.sagiro.iamservice.application.port.input.UpdateVerificationStatusUseCase;
 import com.sagiro.iamservice.application.port.output.CurrentUserProviderPort;
 import com.sagiro.iamservice.application.port.output.KeycloakAdminPort;
+import com.sagiro.iamservice.application.port.output.PasswordRecoveryPublisherPort;
 import com.sagiro.iamservice.application.port.output.UserProfileRepositoryPort;
 import com.sagiro.iamservice.application.port.output.UserRepositoryPort;
 import com.sagiro.iamservice.application.service.DeactivateUserFromEventService;
 import com.sagiro.iamservice.application.service.GetAccessContextService;
 import com.sagiro.iamservice.application.service.GetCurrentUserService;
 import com.sagiro.iamservice.application.service.GetUserStatusService;
+import com.sagiro.iamservice.application.service.LoginService;
+import com.sagiro.iamservice.application.service.PasswordRecoveryService;
 import com.sagiro.iamservice.application.service.ProvisionUserFromEventService;
 import com.sagiro.iamservice.application.service.RegisterUserService;
+import com.sagiro.iamservice.application.service.SimulateKycVerificationService;
 import com.sagiro.iamservice.application.service.UpdateCurrentUserProfileService;
 import com.sagiro.iamservice.application.service.UpdateVerificationStatusService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -96,5 +104,36 @@ public class ApplicationBeanConfig {
             Clock clock
     ) {
         return new DeactivateUserFromEventService(userRepositoryPort, keycloakAdminPort, clock);
+    }
+
+    @Bean
+    SimulateKycVerificationUseCase simulateKycVerificationUseCase(
+            CurrentUserProviderPort currentUserProviderPort,
+            UserRepositoryPort userRepositoryPort,
+            Clock clock
+    ) {
+        return new SimulateKycVerificationService(currentUserProviderPort, userRepositoryPort, clock);
+    }
+
+    @Bean
+    LoginUseCase loginUseCase(KeycloakAdminPort keycloakAdminPort) {
+        return new LoginService(keycloakAdminPort);
+    }
+
+    @Bean
+    PasswordRecoveryUseCase passwordRecoveryUseCase(
+            UserRepositoryPort userRepositoryPort,
+            KeycloakAdminPort keycloakAdminPort,
+            PasswordRecoveryPublisherPort passwordRecoveryPublisherPort,
+            Clock clock,
+            @Value("${app.password-reset.token-ttl-minutes:15}") long tokenTtlMinutes
+    ) {
+        return new PasswordRecoveryService(
+                userRepositoryPort,
+                keycloakAdminPort,
+                passwordRecoveryPublisherPort,
+                clock,
+                tokenTtlMinutes
+        );
     }
 }

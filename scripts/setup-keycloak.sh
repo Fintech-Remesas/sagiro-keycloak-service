@@ -5,7 +5,7 @@ set -euo pipefail
 BASE_URL="${KEYCLOAK_SETUP_BASE_URL:-http://localhost:8081}"
 ADMIN_USERNAME="${KEYCLOAK_SETUP_ADMIN_USERNAME:-admin}"
 ADMIN_PASSWORD="${KEYCLOAK_SETUP_ADMIN_PASSWORD:-admin}"
-REALM="${KEYCLOAK_REALM:-remittance-thesis}"
+REALM="${KEYCLOAK_REALM:-sagiro}"
 ADMIN_CLIENT_ID="${KEYCLOAK_ADMIN_CLIENT_ID:-iam-admin-client}"
 ADMIN_CLIENT_SECRET="${KEYCLOAK_ADMIN_CLIENT_SECRET:-change-me}"
 BACKEND_CLIENT_ID="${KEYCLOAK_BACKEND_CLIENT_ID:-iam-backend}"
@@ -71,10 +71,25 @@ if [ "$realm_status" = "404" ]; then
       "enabled": true,
       "protocol": "openid-connect",
       "publicClient": false,
-      "bearerOnly": true,
+      "bearerOnly": false,
+      "secret": "$BACKEND_CLIENT_SECRET",
       "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "fullScopeAllowed": true
+      "directAccessGrantsEnabled": true,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["basic", "profile", "email", "roles"]
+    },
+    {
+      "clientId": "mobile-app",
+      "name": "mobile-app",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "bearerOnly": false,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "fullScopeAllowed": true,
+      "redirectUris": ["*"],
+      "webOrigins": ["*"]
     }
   ]
 }

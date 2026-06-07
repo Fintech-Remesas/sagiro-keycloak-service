@@ -12,6 +12,8 @@ import com.sagiro.iamservice.domain.model.User;
 import com.sagiro.iamservice.domain.model.UserProfile;
 import com.sagiro.iamservice.domain.valueobject.AuthenticatedUser;
 
+import org.springframework.transaction.annotation.Transactional;
+
 import java.time.Clock;
 import java.time.Instant;
 
@@ -35,6 +37,7 @@ public class UpdateCurrentUserProfileService implements UpdateUserProfileUseCase
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public UserView updateCurrentUserProfile(UpdateUserProfileCommand command) {
         AuthenticatedUser authenticatedUser = currentUserProviderPort.getCurrentUser();
         User user = userRepositoryPort.findByKeycloakUserId(authenticatedUser.subject())

@@ -2,7 +2,7 @@ spring:
   application:
     name: iam-service
   datasource:
-    url: ${DB_URL:jdbc:postgresql://localhost:5432/iam_db}
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/iam_db}
     username: ${DB_USERNAME:iam_user}
     password: ${DB_PASSWORD:iam_password}
   jpa:
@@ -21,7 +21,7 @@ spring:
     oauth2:
       resourceserver:
         jwt:
-          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/remittance-thesis}
+          issuer-uri: ${KEYCLOAK_ISSUER_URI:http://localhost:8081/realms/sagiro}
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
@@ -29,9 +29,15 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      acks: all
+      properties:
+        enable.idempotence: true
 
 server:
-  port: ${SERVER_PORT:8080}
+  port: ${SERVER_PORT:8082}
 
 management:
   endpoints:
@@ -52,15 +58,19 @@ springdoc:
 app:
   keycloak:
     base-url: ${KEYCLOAK_BASE_URL:http://localhost:8081}
-    realm: ${KEYCLOAK_REALM:remittance-thesis}
+    realm: ${KEYCLOAK_REALM:sagiro}
     admin-client-id: ${KEYCLOAK_ADMIN_CLIENT_ID:iam-admin-client}
     admin-client-secret: ${KEYCLOAK_ADMIN_CLIENT_SECRET:change-me}
     backend-client-id: ${KEYCLOAK_BACKEND_CLIENT_ID:iam-backend}
+    backend-client-secret: ${KEYCLOAK_BACKEND_CLIENT_SECRET:change-me}
   kafka:
     topics:
       customer-created: ${KAFKA_TOPIC_CUSTOMER_CREATED:customer.created}
       customer-activated: ${KAFKA_TOPIC_CUSTOMER_ACTIVATED:customer.activated}
       customer-disabled: ${KAFKA_TOPIC_CUSTOMER_DISABLED:customer.disabled}
+      password-recovery-requested: ${KAFKA_TOPIC_PASSWORD_RECOVERY_REQUESTED:password-recovery.requested}
+  password-reset:
+    token-ttl-minutes: ${PASSWORD_RESET_TOKEN_TTL_MINUTES:15}
 
 logging:
   level:

@@ -54,4 +54,9 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
     public boolean existsByUsername(String username) {
         return springDataUserRepository.existsByUsername(username);
     }
+
+    @Override
+    public Optional<User> findByPasswordResetToken(String token) {
+        return springDataUserRepository.findByPasswordResetToken(token).map(UserPersistenceMapper::toDomain);
+    }
 }

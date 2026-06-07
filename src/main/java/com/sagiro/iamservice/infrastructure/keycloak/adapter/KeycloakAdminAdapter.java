@@ -2,11 +2,13 @@ package com.sagiro.iamservice.infrastructure.keycloak.adapter;
 
 import com.sagiro.iamservice.application.dto.ExternalIdentityUserView;
 import com.sagiro.iamservice.application.dto.KeycloakUserDraft;
+import com.sagiro.iamservice.application.dto.LoginView;
 import com.sagiro.iamservice.application.port.output.KeycloakAdminPort;
 import com.sagiro.iamservice.infrastructure.keycloak.client.KeycloakAdminClient;
 import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakCreateUserRequest;
 import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakCredentialRepresentation;
 import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakRoleRepresentation;
+import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakTokenResponse;
 import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakUserRepresentation;
 import org.springframework.stereotype.Component;
 
@@ -25,9 +27,11 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
 
     @Override
     public String createUser(KeycloakUserDraft userDraft) {
+        // temporary=false → el usuario puede iniciar sesión de inmediato con la contraseña provista.
+        // Si no se provee contraseña, se agrega UPDATE_PASSWORD como acción requerida en el primer login.
         List<KeycloakCredentialRepresentation> credentials = userDraft.temporaryPassword() == null || userDraft.temporaryPassword().isBlank()
                 ? List.of()
-                : List.of(new KeycloakCredentialRepresentation("password", userDraft.temporaryPassword(), true));
+                : List.of(new KeycloakCredentialRepresentation("password", userDraft.temporaryPassword(), false));
         List<String> requiredActions = credentials.isEmpty() ? List.of("UPDATE_PASSWORD") : List.of();
 
         return keycloakAdminClient.createUser(new KeycloakCreateUserRequest(
@@ -61,6 +65,23 @@ public class KeycloakAdminAdapter implements KeycloakAdminPort {
     @Override
     public void disableUser(String keycloakUserId) {
         keycloakAdminClient.disableUser(keycloakUserId);
+    }
+
+    @Override
+    public LoginView loginUser(String usernameOrEmail, String password) {
+        KeycloakTokenResponse tokenResponse = keycloakAdminClient.loginUser(usernameOrEmail, password);
+        return new LoginView(
+                tokenResponse.accessToken(),
+                tokenResponse.refreshToken(),
+                tokenResponse.expiresIn(),
+                tokenResponse.refreshExpiresIn(),
+                tokenResponse.tokenType()
+        );
+    }
+
+    @Override
+    public void resetPassword(String keycloakUserId, String newPassword) {
+        keycloakAdminClient.resetPassword(keycloakUserId, newPassword);
     }
 
     private ExternalIdentityUserView toView(KeycloakUserRepresentation representation) {

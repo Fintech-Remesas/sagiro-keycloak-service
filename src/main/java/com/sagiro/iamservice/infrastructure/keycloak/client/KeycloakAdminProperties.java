@@ -8,6 +8,7 @@ public record KeycloakAdminProperties(
         String realm,
         String adminClientId,
         String adminClientSecret,
-        String backendClientId
+        String backendClientId,
+        String backendClientSecret
 ) {
 }

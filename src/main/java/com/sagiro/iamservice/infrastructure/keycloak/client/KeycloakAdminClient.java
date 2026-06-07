@@ -1,12 +1,15 @@
 package com.sagiro.iamservice.infrastructure.keycloak.client;
 
 import com.sagiro.iamservice.application.exception.ExternalServiceException;
+import com.sagiro.iamservice.application.exception.UnauthorizedException;
 import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakCreateUserRequest;
+import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakCredentialRepresentation;
 import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakRoleRepresentation;
 import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakTokenResponse;
 import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakUserRepresentation;
 import com.sagiro.iamservice.infrastructure.keycloak.dto.KeycloakUserUpdateRequest;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.LinkedMultiValueMap;
@@ -125,6 +128,60 @@ public class KeycloakAdminClient {
                     .toBodilessEntity();
         } catch (RestClientResponseException exception) {
             throw new ExternalServiceException("Failed to disable user in Keycloak: " + exception.getResponseBodyAsString(), exception);
+        }
+    }
+
+    /**
+     * Authenticates a user against Keycloak using the resource-owner password grant.
+     * Returns a full OIDC token response containing access and refresh tokens.
+     * This call must NOT be invoked inside a @Transactional block (fintech rule).
+     */
+    public KeycloakTokenResponse loginUser(String usernameOrEmail, String password) {
+        try {
+            MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
+            formData.add("grant_type", "password");
+            formData.add("client_id", properties.backendClientId());
+            formData.add("client_secret", properties.backendClientSecret());
+            formData.add("username", usernameOrEmail);
+            formData.add("password", password);
+            formData.add("scope", "openid");
+
+            KeycloakTokenResponse response = restClient.post()
+                    .uri("/realms/{realm}/protocol/openid-connect/token", properties.realm())
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(formData)
+                    .retrieve()
+                    .body(KeycloakTokenResponse.class);
+
+            if (response == null || response.accessToken() == null || response.accessToken().isBlank()) {
+                throw new UnauthorizedException("Keycloak rejected the login attempt");
+            }
+            return response;
+        } catch (RestClientResponseException exception) {
+            if (exception.getStatusCode() == HttpStatus.UNAUTHORIZED) {
+                throw new UnauthorizedException("Invalid credentials");
+            }
+            throw new ExternalServiceException("Failed to authenticate user via Keycloak: " + exception.getResponseBodyAsString(), exception);
+        }
+    }
+
+    /**
+     * Resets the password for a Keycloak user identified by their keycloakUserId.
+     * Uses the admin API with a technical service account token.
+     * The password is marked as NOT temporary so the user does not need to change it on next login.
+     */
+    public void resetPassword(String keycloakUserId, String newPassword) {
+        String token = obtainTechnicalToken();
+        try {
+            restClient.put()
+                    .uri("/admin/realms/{realm}/users/{userId}/reset-password", properties.realm(), keycloakUserId)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(HttpHeaders.AUTHORIZATION, bearer(token))
+                    .body(new KeycloakCredentialRepresentation("password", newPassword, false))
+                    .retrieve()
+                    .toBodilessEntity();
+        } catch (RestClientResponseException exception) {
+            throw new ExternalServiceException("Failed to reset password in Keycloak: " + exception.getResponseBodyAsString(), exception);
         }
     }
 

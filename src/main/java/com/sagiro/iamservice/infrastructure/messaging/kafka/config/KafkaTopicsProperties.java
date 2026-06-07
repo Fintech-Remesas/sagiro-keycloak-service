@@ -6,6 +6,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public record KafkaTopicsProperties(
         String customerCreated,
         String customerActivated,
-        String customerDisabled
+        String customerDisabled,
+        String passwordRecoveryRequested
 ) {
 }
