@@ -59,4 +59,22 @@ public class UserPersistenceAdapter implements UserRepositoryPort {
     public Optional<User> findByPasswordResetToken(String token) {
         return springDataUserRepository.findByPasswordResetToken(token).map(UserPersistenceMapper::toDomain);
     }
+
+    @Override
+    public com.sagiro.iamservice.application.dto.UserSearchPage searchVerifiedUsers(String query, String type, int page, int size) {
+        org.springframework.data.domain.Page<com.sagiro.iamservice.infrastructure.persistence.entity.UserEntity> entityPage = 
+            springDataUserRepository.searchVerifiedUsers(query, type, org.springframework.data.domain.PageRequest.of(page, size));
+        
+        java.util.List<User> users = entityPage.getContent().stream()
+            .map(UserPersistenceMapper::toDomain)
+            .collect(java.util.stream.Collectors.toList());
+            
+        return new com.sagiro.iamservice.application.dto.UserSearchPage(
+            users,
+            (int) entityPage.getTotalElements(),
+            entityPage.getTotalPages(),
+            page,
+            size
+        );
+    }
 }

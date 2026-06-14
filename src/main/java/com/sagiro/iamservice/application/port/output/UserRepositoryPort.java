@@ -22,4 +22,6 @@ public interface UserRepositoryPort {
     boolean existsByUsername(String username);
 
     Optional<User> findByPasswordResetToken(String token);
+
+    com.sagiro.iamservice.application.dto.UserSearchPage searchVerifiedUsers(String query, String type, int page, int size);
 }

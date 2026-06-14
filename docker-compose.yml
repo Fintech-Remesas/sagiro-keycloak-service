@@ -16,14 +16,14 @@ services:
       timeout: 5s
       retries: 5
 
-    zookeeper:
-      image: confluentinc/cp-zookeeper:7.6.1
-      container_name: iam-zookeeper
-      environment:
-        ZOOKEEPER_CLIENT_PORT: 2181
-        ZOOKEEPER_TICK_TIME: 2000
-      ports:
-        - "2181:2181"
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.1
+    container_name: iam-zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
 
   kafka:
     image: confluentinc/cp-kafka:7.6.1
@@ -42,19 +42,20 @@ services:
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
     healthcheck:
       test: ["CMD-SHELL", "kafka-topics --bootstrap-server localhost:9092 --list"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      interval: 30s
+      timeout: 15s
+      retries: 10
+      start_period: 30s
 
-    keycloak:
-      image: quay.io/keycloak/keycloak:25.0.6
-      container_name: iam-keycloak
-      command: ["start-dev", "--http-port=8080"]
-      environment:
-        KEYCLOAK_ADMIN: admin
-        KEYCLOAK_ADMIN_PASSWORD: admin
-      ports:
-        - "8081:8080"
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0.6
+    container_name: iam-keycloak
+    command: ["start-dev", "--http-port=8080"]
+    environment:
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    ports:
+      - "8081:8080"
 
   iam-service:
     build:
@@ -69,6 +70,7 @@ services:
         condition: service_started
     environment:
       SERVER_PORT: 8082
+      SERVER_FORWARD_HEADERS_STRATEGY: framework
       DB_URL: jdbc:postgresql://postgres:5432/iam_db
       DB_USERNAME: iam_user
       DB_PASSWORD: iam_password

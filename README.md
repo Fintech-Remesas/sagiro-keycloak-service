@@ -22,6 +22,8 @@ Base técnica del microservicio de Identidad y Acceso (IAM) para la plataforma d
    - [POST /me/simulate-kyc](#post-apiv1usersme-simulate-kyc)
    - [POST /password-recovery/request](#post-apiv1userspassword-recoveryrequest)
    - [POST /password-recovery/reset](#post-apiv1userspassword-recoveryreset)
+   - [Endpoints Financieros (Tarjetas y Cuentas Bancarias)](#endpoints-financieros-tarjetas-y-cuentas-bancarias)
+   - [Búsqueda de Usuarios](#búsqueda-de-usuarios)
    - [Endpoints internos](#endpoints-internos)
    - [Endpoints de prueba](#endpoints-de-prueba)
 8. [Recuperación de contraseña – Flujo completo](#recuperación-de-contraseña--flujo-completo)
@@ -140,6 +142,7 @@ La base de datos se provisiona automáticamente via Flyway con dos migraciones:
 | `KAFKA_TOPIC_CUSTOMER_DISABLED` | Tópico de cliente desactivado | `customer.disabled` |
 | `KAFKA_TOPIC_PASSWORD_RECOVERY_REQUESTED` | Tópico de recuperación de contraseña | `password-recovery.requested` |
 | `PASSWORD_RESET_TOKEN_TTL_MINUTES` | TTL en minutos para el token de recuperación | `15` |
+| `AES_ENCRYPTION_KEY` | Llave secreta para cifrado AES-256-GCM (32 caracteres min) | `V2hhdGV2ZXJTdWperFNlY3JldEtleUJhczY0==` |
 
 ---
 
@@ -147,12 +150,16 @@ La base de datos se provisiona automáticamente via Flyway con dos migraciones:
 
 **Opción ideal para probar el proyecto rápidamente sin instalar Java ni Maven.**
 
-1. **Asegúrate de estar en la raíz del proyecto.**
-2. **Levanta todos los contenedores** (Base de datos, Keycloak, Kafka, Zookeeper y el propio microservicio IAM):
+1. **Asegúrate de estar en la raíz del proyecto** (`sagiro/sagiro-keycloak-service`).
+2. **Configura tu llave de encriptación AES-256** antes de levantar el contenedor. Puedes configurar una variable de entorno en tu terminal:
+   - En Linux/Mac/Git Bash: `export AES_ENCRYPTION_KEY=12345678901234567890123456789012`
+   - En Windows CMD: `set AES_ENCRYPTION_KEY=12345678901234567890123456789012`
+   *(Alternativamente, esta variable ya está definida por defecto en tu `application.yml` local para entornos de desarrollo).*
+3. **Levanta todos los contenedores** (Base de datos, Keycloak, Kafka, Zookeeper y el propio microservicio IAM):
    ```bash
    docker compose up --build -d
    ```
-3. **Inicializa la configuración de Keycloak** (Esto creará el Realm, los clientes y roles requeridos para que funcione):
+4. **Inicializa la configuración de Keycloak** (Esto creará el Realm, los clientes y roles requeridos para que funcione):
    ```bash
    ./scripts/setup-keycloak.sh
    ```
@@ -605,8 +612,8 @@ El `token` es el UUID de un solo uso recibido del communication-service. Expira 
 **Response `200 OK`:**
 ```json
 {
-  "status": "SUCCESS",
-  "message": "Password reset successfully. You can now log in with your new password.",
+  "success": true,
+  "message": "Password reset successfully",
   "data": null
 }
 ```
