@@ -41,13 +41,13 @@ public class RegisterUserService implements RegisterUserUseCase {
     @Override
     public UserView register(RegisterUserCommand command) {
         if (userRepositoryPort.existsByEmail(command.email())) {
-            throw new ConflictException("A local IAM user with the same email already exists");
+            throw new ConflictException("Este correo ya está registrado");
         }
         if (userRepositoryPort.existsByUsername(command.username())) {
-            throw new ConflictException("A local IAM user with the same username already exists");
+            throw new ConflictException("Este nombre de usuario ya está en uso");
         }
         if (keycloakAdminPort.findUser(command.email(), command.username()).isPresent()) {
-            throw new ConflictException("A Keycloak identity with the same email or username already exists");
+            throw new ConflictException("La identidad en Keycloak para este usuario o correo ya existe");
         }
 
         String keycloakUserId = keycloakAdminPort.createUser(
