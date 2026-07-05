@@ -1,8 +1,8 @@
 package com.sagiro.iamservice.infrastructure.web.controller;
 
 import com.sagiro.iamservice.application.dto.UserSearchPage;
+import com.sagiro.iamservice.application.dto.UserView;
 import com.sagiro.iamservice.application.port.input.SearchUsersUseCase;
-import com.sagiro.iamservice.domain.model.User;
 import com.sagiro.iamservice.infrastructure.shared.ApiResponse;
 import com.sagiro.iamservice.infrastructure.web.mapper.WebResponseMapper;
 import com.sagiro.iamservice.infrastructure.web.response.UserResponse;
@@ -41,15 +41,8 @@ public class UserSearchController {
     @GetMapping("/{id}/public-profile")
     @Operation(summary = "Get user public profile", description = "Returns limited info for a verified user")
     public ResponseEntity<ApiResponse<UserResponse>> getPublicProfile(@PathVariable UUID id) {
-        User user = searchUsersUseCase.getPublicProfile(id)
+        UserView userView = searchUsersUseCase.getPublicProfile(id)
                 .orElseThrow(() -> new com.sagiro.iamservice.application.exception.ResourceNotFoundException("User not found or not verified"));
-        
-        com.sagiro.iamservice.application.dto.UserView userView = new com.sagiro.iamservice.application.dto.UserView(
-            user.getId(), user.getKeycloakUserId(), user.getEmail(), user.getUsername(), user.getPhone(),
-            user.getFirstName(), user.getLastName(), user.getAccountStatus(), user.getVerificationStatus(),
-            user.getVerificationLevel(), user.getVerificationUpdatedAt(), user.isCanOperate(), user.isEnabled(),
-            user.getCreatedAt(), user.getUpdatedAt(), null
-        );
         return ResponseEntity.ok(ApiResponse.success("Public profile retrieved", WebResponseMapper.toResponse(userView)));
     }
 }

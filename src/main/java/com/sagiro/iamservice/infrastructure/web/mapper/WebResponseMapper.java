@@ -2,6 +2,7 @@ package com.sagiro.iamservice.infrastructure.web.mapper;
 
 import com.sagiro.iamservice.application.dto.AccessContextView;
 import com.sagiro.iamservice.application.dto.LoginView;
+import com.sagiro.iamservice.application.dto.RemittanceContextView;
 import com.sagiro.iamservice.application.dto.UserProfileView;
 import com.sagiro.iamservice.application.dto.UserStatusView;
 import com.sagiro.iamservice.application.dto.UserView;
@@ -14,6 +15,15 @@ import com.sagiro.iamservice.infrastructure.web.response.UserStatusResponse;
 public final class WebResponseMapper {
 
     private WebResponseMapper() {
+    }
+
+    public static RemittanceContextResponse toResponse(RemittanceContextView view) {
+        return new RemittanceContextResponse(
+                view.userId(),
+                view.country(),
+                view.firstName(),
+                view.lastName()
+        );
     }
 
     public static UserResponse toResponse(UserView view) {

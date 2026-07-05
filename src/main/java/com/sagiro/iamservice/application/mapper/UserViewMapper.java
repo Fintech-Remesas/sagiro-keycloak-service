@@ -28,7 +28,7 @@ public final class UserViewMapper {
                 user.isEnabled(),
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
-                toProfileView(profile)
+                profile != null ? toProfileView(profile) : null
         );
     }
 
