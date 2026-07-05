@@ -8,6 +8,7 @@ import com.sagiro.iamservice.application.dto.UserStatusView;
 import com.sagiro.iamservice.application.dto.UserView;
 import com.sagiro.iamservice.infrastructure.web.response.AccessContextResponse;
 import com.sagiro.iamservice.infrastructure.web.response.LoginResponse;
+import com.sagiro.iamservice.infrastructure.web.response.RemittanceContextResponse;
 import com.sagiro.iamservice.infrastructure.web.response.UserProfileResponse;
 import com.sagiro.iamservice.infrastructure.web.response.UserResponse;
 import com.sagiro.iamservice.infrastructure.web.response.UserStatusResponse;
