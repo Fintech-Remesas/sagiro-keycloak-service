@@ -28,6 +28,8 @@ public final class UserViewMapper {
                 user.isEnabled(),
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
+                user.isAllowTestRecharge(),
+                user.isWelcomeBonusClaimed(),
                 profile != null ? toProfileView(profile) : null
         );
     }
@@ -51,7 +53,9 @@ public final class UserViewMapper {
                 user.getVerificationLevel(),
                 user.isCanOperate(),
                 user.isEnabled(),
-                user.getVerificationUpdatedAt()
+                user.getVerificationUpdatedAt(),
+                user.isAllowTestRecharge(),
+                user.isWelcomeBonusClaimed()
         );
     }
 }

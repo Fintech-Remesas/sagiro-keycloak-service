@@ -71,6 +71,12 @@ public class UserEntity {
     @Column(name = "password_reset_token_expires_at")
     private Instant passwordResetTokenExpiresAt;
 
+    @Column(name = "allow_test_recharge", nullable = false)
+    private boolean allowTestRecharge = false;
+
+    @Column(name = "welcome_bonus_claimed", nullable = false)
+    private boolean welcomeBonusClaimed = false;
+
     public UUID getId() {
         return id;
     }
@@ -205,5 +211,21 @@ public class UserEntity {
 
     public void setPasswordResetTokenExpiresAt(Instant passwordResetTokenExpiresAt) {
         this.passwordResetTokenExpiresAt = passwordResetTokenExpiresAt;
+    }
+
+    public boolean isAllowTestRecharge() {
+        return allowTestRecharge;
+    }
+
+    public void setAllowTestRecharge(boolean allowTestRecharge) {
+        this.allowTestRecharge = allowTestRecharge;
+    }
+
+    public boolean isWelcomeBonusClaimed() {
+        return welcomeBonusClaimed;
+    }
+
+    public void setWelcomeBonusClaimed(boolean welcomeBonusClaimed) {
+        this.welcomeBonusClaimed = welcomeBonusClaimed;
     }
 }

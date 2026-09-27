@@ -44,6 +44,8 @@ public final class WebResponseMapper {
                 view.enabled(),
                 view.createdAt(),
                 view.updatedAt(),
+                view.allowTestRecharge(),
+                view.welcomeBonusClaimed(),
                 toResponse(view.profile())
         );
     }
@@ -83,7 +85,9 @@ public final class WebResponseMapper {
                 view.verificationLevel(),
                 view.canOperate(),
                 view.enabled(),
-                view.verificationUpdatedAt()
+                view.verificationUpdatedAt(),
+                view.allowTestRecharge(),
+                view.welcomeBonusClaimed()
         );
     }
 

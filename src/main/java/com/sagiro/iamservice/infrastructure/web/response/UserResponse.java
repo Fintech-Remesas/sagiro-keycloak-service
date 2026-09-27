@@ -55,6 +55,12 @@ public record UserResponse(
         @Schema(description = "Last update timestamp (UTC)", example = "2026-06-05T14:00:00Z")
         Instant updatedAt,
 
+        @Schema(description = "Whether the user can make fictitious test recharges", example = "false")
+        boolean allowTestRecharge,
+
+        @Schema(description = "Whether the welcome bonus was already claimed", example = "false")
+        boolean welcomeBonusClaimed,
+
         @Schema(description = "User's profile preferences")
         UserProfileResponse profile
 ) {

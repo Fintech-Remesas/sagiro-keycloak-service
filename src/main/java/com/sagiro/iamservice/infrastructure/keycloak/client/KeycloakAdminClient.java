@@ -185,7 +185,13 @@ public class KeycloakAdminClient {
         }
     }
 
-    private String obtainTechnicalToken() {
+    private String cachedToken;
+    private long tokenExpirationTime;
+
+    private synchronized String obtainTechnicalToken() {
+        if (cachedToken != null && System.currentTimeMillis() < tokenExpirationTime) {
+            return cachedToken;
+        }
         try {
             MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
             formData.add("grant_type", "client_credentials");
@@ -202,7 +208,12 @@ public class KeycloakAdminClient {
             if (response == null || response.accessToken() == null || response.accessToken().isBlank()) {
                 throw new ExternalServiceException("Keycloak admin token response did not include an access token");
             }
-            return response.accessToken();
+            
+            cachedToken = response.accessToken();
+            // Cache token with a 5 second buffer before expiration
+            tokenExpirationTime = System.currentTimeMillis() + (response.expiresIn() * 1000L) - 5000L;
+            
+            return cachedToken;
         } catch (RestClientResponseException exception) {
             throw new ExternalServiceException("Failed to obtain technical token from Keycloak: " + exception.getResponseBodyAsString(), exception);
         }

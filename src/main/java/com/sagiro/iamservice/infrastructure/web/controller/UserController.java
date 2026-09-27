@@ -5,6 +5,7 @@ import com.sagiro.iamservice.application.dto.RegisterUserCommand;
 import com.sagiro.iamservice.application.dto.RequestPasswordRecoveryCommand;
 import com.sagiro.iamservice.application.dto.ResetPasswordCommand;
 import com.sagiro.iamservice.application.dto.UpdateUserProfileCommand;
+import com.sagiro.iamservice.application.port.input.ClaimWelcomeBonusUseCase;
 import com.sagiro.iamservice.application.port.input.GetAccessContextUseCase;
 import com.sagiro.iamservice.application.port.input.GetCurrentUserUseCase;
 import com.sagiro.iamservice.application.port.input.GetUserStatusUseCase;
@@ -24,6 +25,11 @@ import com.sagiro.iamservice.infrastructure.web.response.AccessContextResponse;
 import com.sagiro.iamservice.infrastructure.web.response.LoginResponse;
 import com.sagiro.iamservice.infrastructure.web.response.UserResponse;
 import com.sagiro.iamservice.infrastructure.web.response.UserStatusResponse;
+import com.sagiro.iamservice.application.port.output.LedgerDepositPort;
+import com.sagiro.iamservice.infrastructure.web.request.DepositRequest;
+import com.sagiro.iamservice.domain.model.User;
+import com.sagiro.iamservice.infrastructure.web.response.UserResponse;
+import com.sagiro.iamservice.infrastructure.web.response.UserStatusResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -38,6 +44,7 @@ import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -55,7 +62,9 @@ public class UserController {
     private final GetAccessContextUseCase getAccessContextUseCase;
     private final GetUserStatusUseCase getUserStatusUseCase;
     private final SimulateKycVerificationUseCase simulateKycVerificationUseCase;
+    private final ClaimWelcomeBonusUseCase claimWelcomeBonusUseCase;
     private final PasswordRecoveryUseCase passwordRecoveryUseCase;
+    private final LedgerDepositPort ledgerDepositPort;
 
     public UserController(
             RegisterUserUseCase registerUserUseCase,
@@ -65,7 +74,9 @@ public class UserController {
             GetAccessContextUseCase getAccessContextUseCase,
             GetUserStatusUseCase getUserStatusUseCase,
             SimulateKycVerificationUseCase simulateKycVerificationUseCase,
-            PasswordRecoveryUseCase passwordRecoveryUseCase
+            ClaimWelcomeBonusUseCase claimWelcomeBonusUseCase,
+            PasswordRecoveryUseCase passwordRecoveryUseCase,
+            LedgerDepositPort ledgerDepositPort
     ) {
         this.registerUserUseCase = registerUserUseCase;
         this.loginUseCase = loginUseCase;
@@ -74,7 +85,9 @@ public class UserController {
         this.getAccessContextUseCase = getAccessContextUseCase;
         this.getUserStatusUseCase = getUserStatusUseCase;
         this.simulateKycVerificationUseCase = simulateKycVerificationUseCase;
+        this.claimWelcomeBonusUseCase = claimWelcomeBonusUseCase;
         this.passwordRecoveryUseCase = passwordRecoveryUseCase;
+        this.ledgerDepositPort = ledgerDepositPort;
     }
 
     // ─────────────────────────────────────────────────────────
@@ -244,6 +257,59 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserStatusResponse>> simulateKyc() {
         UserStatusResponse response = WebResponseMapper.toResponse(simulateKycVerificationUseCase.simulateKycForCurrentUser());
         return ResponseEntity.ok(ApiResponse.success("KYC simulated successfully", response));
+    }
+
+    @PostMapping("/me/claim-welcome-bonus")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Claim one-time welcome bonus",
+            description = """
+                    Allows a fully registered new user to claim their one-time $1 USDC welcome bonus.
+                    The user must have completed all registration steps: KYC verified, at least one card,
+                    and at least one bank account registered.
+                    """
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Bonus claimed successfully",
+                    content = @Content(schema = @Schema(implementation = UserStatusResponse.class))),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "Missing or invalid Bearer token"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "User not found"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Bonus already claimed or pending conditions (e.g., KYC not verified)")
+    })
+    public ResponseEntity<ApiResponse<UserStatusResponse>> claimWelcomeBonus() {
+        // Use the ID from the currently authenticated user
+        UUID currentUserId = getCurrentUserUseCase.getCurrentUser().id();
+        UserStatusResponse response = WebResponseMapper.toResponse(claimWelcomeBonusUseCase.claimBonus(currentUserId));
+        return ResponseEntity.ok(ApiResponse.success("Bono de bienvenida reclamado exitosamente", response));
+    }
+
+    @PostMapping("/me/deposit")
+    @SecurityRequirement(name = "bearerAuth")
+    @Operation(
+            summary = "Deposit funds (Mock test recharge)",
+            description = "Intercepts the deposit request, checks if allowTestRecharge is true, and then calls the Ledger service."
+    )
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Deposit successful"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "Validation error"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "Not allowed to recharge")
+    })
+    public ResponseEntity<ApiResponse<Void>> deposit(
+            @RequestHeader(value = "X-Idempotency-Key", required = false) String idempotencyKey,
+            @RequestHeader(value = "X-User-Id") String keycloakId,
+            @Valid @RequestBody DepositRequest request) {
+        
+        UUID currentUserId = getCurrentUserUseCase.getCurrentUser().id();
+        com.sagiro.iamservice.application.dto.UserStatusView status = getUserStatusUseCase.getUserStatus(currentUserId);
+        
+        if (!status.allowTestRecharge()) {
+            throw new IllegalStateException("No tienes permiso para realizar recargas de prueba ficticias. Solo cuentas autorizadas pueden hacerlo.");
+        }
+        
+        String key = idempotencyKey != null ? idempotencyKey : UUID.randomUUID().toString();
+        ledgerDepositPort.depositFunds(UUID.fromString(keycloakId), request.amount(), request.currency(), key, request.description());
+        
+        return ResponseEntity.ok(ApiResponse.success("Deposit successful", null));
     }
 
     // ─────────────────────────────────────────────────────────

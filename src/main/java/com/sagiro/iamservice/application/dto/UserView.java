@@ -23,6 +23,8 @@ public record UserView(
         boolean enabled,
         Instant createdAt,
         Instant updatedAt,
+        boolean allowTestRecharge,
+        boolean welcomeBonusClaimed,
         UserProfileView profile
 ) {
 }

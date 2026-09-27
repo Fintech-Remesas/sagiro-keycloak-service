@@ -193,7 +193,7 @@ try {
         -Uri "$BaseUrl/admin/realms/$Realm/clients/$realmMgmtId/roles" `
         -Headers $headers
     $neededRoles = $allRoles | Where-Object { $_.name -in @("manage-users","query-users","view-users","view-realm") }
-    $rolesPayload = $neededRoles | ConvertTo-Json -AsArray
+    $rolesPayload = @($neededRoles) | ConvertTo-Json
 
     # Asignar los roles al service account
     Invoke-RestMethod `

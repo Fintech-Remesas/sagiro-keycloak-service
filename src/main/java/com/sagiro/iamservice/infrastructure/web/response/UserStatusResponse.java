@@ -32,6 +32,12 @@ public record UserStatusResponse(
         boolean enabled,
 
         @Schema(description = "Timestamp of the last verification status change (UTC)", example = "2026-06-01T10:00:00Z")
-        Instant verificationUpdatedAt
+        Instant verificationUpdatedAt,
+
+        @Schema(description = "Whether the user is allowed to perform test recharges (admin-only toggle)", example = "false")
+        boolean allowTestRecharge,
+
+        @Schema(description = "Whether the user has already claimed the welcome bonus", example = "false")
+        boolean welcomeBonusClaimed
 ) {
 }

@@ -14,6 +14,8 @@ public record UserStatusView(
         VerificationLevel verificationLevel,
         boolean canOperate,
         boolean enabled,
-        Instant verificationUpdatedAt
+        Instant verificationUpdatedAt,
+        boolean allowTestRecharge,
+        boolean welcomeBonusClaimed
 ) {
 }

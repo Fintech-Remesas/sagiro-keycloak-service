@@ -12,7 +12,7 @@ public record AddCardRequest(
     @NotBlank String cardholderName,
     @NotBlank @Pattern(regexp = "^\\d{13,19}$", message = "Must be a valid card number") String cardNumber,
     @Min(1) @Max(12) int expiryMonth,
-    @Min(2024) int expiryYear,
+    @Min(2020) int expiryYear,
     @NotNull CardBrand cardBrand,
     @NotNull CardType cardType,
     String alias

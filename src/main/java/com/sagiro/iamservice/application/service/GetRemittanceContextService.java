@@ -29,9 +29,13 @@ public class GetRemittanceContextService implements GetRemittanceContextUseCase 
     @Override
     @Transactional(readOnly = true)
     public RemittanceContextView getRemittanceContext(UUID userId) {
+        // Try by internal ID first, then fallback to keycloak_user_id
         User user = userRepositoryPort.findById(userId)
+                .or(() -> userRepositoryPort.findByKeycloakUserId(userId.toString()))
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
-        UserProfile profile = userProfileRepositoryPort.findByUserId(userId)
+
+        UUID internalId = user.getId();
+        UserProfile profile = userProfileRepositoryPort.findByUserId(internalId)
                 .orElseThrow(() -> new ResourceNotFoundException("User profile not found: " + userId));
 
         return new RemittanceContextView(

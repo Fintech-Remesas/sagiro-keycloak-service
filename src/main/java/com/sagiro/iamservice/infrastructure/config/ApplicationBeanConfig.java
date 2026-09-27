@@ -1,5 +1,6 @@
 package com.sagiro.iamservice.infrastructure.config;
 
+import com.sagiro.iamservice.application.port.input.ClaimWelcomeBonusUseCase;
 import com.sagiro.iamservice.application.port.input.DeactivateUserFromEventUseCase;
 import com.sagiro.iamservice.application.port.input.GetAccessContextUseCase;
 import com.sagiro.iamservice.application.port.input.GetCurrentUserUseCase;
@@ -11,11 +12,15 @@ import com.sagiro.iamservice.application.port.input.RegisterUserUseCase;
 import com.sagiro.iamservice.application.port.input.SimulateKycVerificationUseCase;
 import com.sagiro.iamservice.application.port.input.UpdateUserProfileUseCase;
 import com.sagiro.iamservice.application.port.input.UpdateVerificationStatusUseCase;
+import com.sagiro.iamservice.application.port.output.BankAccountRepositoryPort;
+import com.sagiro.iamservice.application.port.output.CardRepositoryPort;
 import com.sagiro.iamservice.application.port.output.CurrentUserProviderPort;
 import com.sagiro.iamservice.application.port.output.KeycloakAdminPort;
+import com.sagiro.iamservice.application.port.output.LedgerDepositPort;
 import com.sagiro.iamservice.application.port.output.PasswordRecoveryPublisherPort;
 import com.sagiro.iamservice.application.port.output.UserProfileRepositoryPort;
 import com.sagiro.iamservice.application.port.output.UserRepositoryPort;
+import com.sagiro.iamservice.application.service.ClaimWelcomeBonusService;
 import com.sagiro.iamservice.application.service.DeactivateUserFromEventService;
 import com.sagiro.iamservice.application.service.GetAccessContextService;
 import com.sagiro.iamservice.application.service.GetCurrentUserService;
@@ -27,9 +32,11 @@ import com.sagiro.iamservice.application.service.RegisterUserService;
 import com.sagiro.iamservice.application.service.SimulateKycVerificationService;
 import com.sagiro.iamservice.application.service.UpdateCurrentUserProfileService;
 import com.sagiro.iamservice.application.service.UpdateVerificationStatusService;
+import com.sagiro.iamservice.infrastructure.adapter.out.http.LedgerDepositHttpAdapter;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.client.RestTemplate;
 
 import java.time.Clock;
 
@@ -39,6 +46,22 @@ public class ApplicationBeanConfig {
     @Bean
     Clock clock() {
         return Clock.systemUTC();
+    }
+
+    @Bean
+    RestTemplate restTemplate(org.springframework.boot.web.client.RestTemplateBuilder builder) {
+        return builder
+                .setConnectTimeout(java.time.Duration.ofSeconds(5))
+                .setReadTimeout(java.time.Duration.ofSeconds(15))
+                .build();
+    }
+
+    @Bean
+    LedgerDepositPort ledgerDepositPort(
+            RestTemplate restTemplate,
+            @Value("${app.ledger.base-url:http://localhost:8085}") String ledgerServiceBaseUrl
+    ) {
+        return new LedgerDepositHttpAdapter(restTemplate, ledgerServiceBaseUrl);
     }
 
     @Bean
@@ -136,4 +159,22 @@ public class ApplicationBeanConfig {
                 tokenTtlMinutes
         );
     }
+
+    @Bean
+    ClaimWelcomeBonusUseCase claimWelcomeBonusUseCase(
+            UserRepositoryPort userRepositoryPort,
+            CardRepositoryPort cardRepositoryPort,
+            BankAccountRepositoryPort bankAccountRepositoryPort,
+            LedgerDepositPort ledgerDepositPort,
+            Clock clock
+    ) {
+        return new ClaimWelcomeBonusService(
+                userRepositoryPort,
+                cardRepositoryPort,
+                bankAccountRepositoryPort,
+                ledgerDepositPort,
+                clock
+        );
+    }
 }
+

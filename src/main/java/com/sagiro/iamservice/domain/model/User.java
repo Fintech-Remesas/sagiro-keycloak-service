@@ -28,6 +28,8 @@ public final class User {
     private Instant updatedAt;
     private String passwordResetToken;
     private Instant passwordResetTokenExpiresAt;
+    private boolean allowTestRecharge;
+    private boolean welcomeBonusClaimed;
 
     public User(
             UUID id,
@@ -46,7 +48,9 @@ public final class User {
             Instant createdAt,
             Instant updatedAt,
             String passwordResetToken,
-            Instant passwordResetTokenExpiresAt
+            Instant passwordResetTokenExpiresAt,
+            boolean allowTestRecharge,
+            boolean welcomeBonusClaimed
     ) {
         this.id = Objects.requireNonNull(id, "id is required");
         this.keycloakUserId = keycloakUserId;
@@ -65,6 +69,8 @@ public final class User {
         this.updatedAt = Objects.requireNonNull(updatedAt, "updatedAt is required");
         this.passwordResetToken = passwordResetToken;
         this.passwordResetTokenExpiresAt = passwordResetTokenExpiresAt;
+        this.allowTestRecharge = allowTestRecharge;
+        this.welcomeBonusClaimed = welcomeBonusClaimed;
         refreshOperationalCapability();
     }
 
@@ -95,7 +101,9 @@ public final class User {
                 now,
                 now,
                 null,
-                null
+                null,
+                false,
+                false
         );
     }
 
@@ -248,5 +256,24 @@ public final class User {
 
     public Instant getPasswordResetTokenExpiresAt() {
         return passwordResetTokenExpiresAt;
+    }
+
+    public boolean isAllowTestRecharge() {
+        return allowTestRecharge;
+    }
+
+    public boolean isWelcomeBonusClaimed() {
+        return welcomeBonusClaimed;
+    }
+
+    /**
+     * Claims the one-time welcome bonus. Throws if already claimed.
+     */
+    public void claimWelcomeBonus(Instant now) {
+        if (this.welcomeBonusClaimed) {
+            throw new IllegalStateException("Welcome bonus already claimed");
+        }
+        this.welcomeBonusClaimed = true;
+        touch(now);
     }
 }
