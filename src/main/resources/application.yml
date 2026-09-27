@@ -57,6 +57,8 @@ springdoc:
     path: /v3/api-docs
 
 app:
+  ledger:
+    base-url: ${APP_LEDGER_BASE_URL:http://localhost:8085}
   keycloak:
     base-url: ${KEYCLOAK_BASE_URL:http://localhost:8081}
     realm: ${KEYCLOAK_REALM:sagiro}
